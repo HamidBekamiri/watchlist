@@ -1,3 +1,10 @@
+"""
+Watchlist Explorer — Session 4, Track A (Era 2 · Streamlit)
+BDS M1 · Hamid Bekamiri
+
+Run it with:   streamlit run app.py
+"""
+
 import time
 
 import pandas as pd
@@ -9,6 +16,7 @@ st.title("Watchlist Explorer")
 st.caption("Six tech stocks, weekly, 2018-2019. Indexed to 1.00 on 2018-01-01.")
 
 
+# --- 1. cache the expensive load ------------------------------------------
 @st.cache_data
 def load_data():
     time.sleep(2)  # stand-in for a slow API / database call — delete in a real app
@@ -19,6 +27,8 @@ def load_data():
 
 
 df = load_data()
+
+# --- 2. sidebar: multiselect + slider + checkbox ---------------------------
 with st.sidebar:
     st.header("Controls")
     tickers = st.multiselect(
@@ -43,6 +53,7 @@ if view.empty:
 if rebase:
     view["price"] = view.groupby("ticker")["price"].transform(lambda s: s / s.iloc[0] * 100)
 
+# --- 3. headline numbers + a chart that reacts to every widget -------------
 perf = view.groupby("ticker")["price"].agg(["first", "last"])
 perf["return_%"] = (perf["last"] / perf["first"] - 1) * 100
 best = perf["return_%"].idxmax()
@@ -62,6 +73,8 @@ fig = px.line(
 )
 fig.update_layout(height=420, margin=dict(t=10, b=0), legend_title_text="")
 st.plotly_chart(fig)
+
+# --- 4. session_state: pinned views survive reruns -------------------------
 if "pinned" not in st.session_state:
     st.session_state.pinned = []
 
@@ -83,8 +96,7 @@ if st.session_state.pinned:
     st.subheader("Pinned views")
     st.dataframe(pd.DataFrame(st.session_state.pinned), hide_index=True)
 
-pins = pd.DataFrame(st.session_state.pinned)   # nothing special, just a DataFrame
-
+# --- 5. let the stakeholder take the data home -----------------------------
 st.download_button(
     "Download filtered data (CSV)",
     data=view.to_csv(index=False).encode("utf-8"),
